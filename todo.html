@@ -139,7 +139,6 @@
 
         this.$todos.sortable({
           update: function(event, ui) {
-            console.log('sorted');
             $('div.todo',this).each(function(i) {
               var id = $(this).attr('data-id');
               var todo = Todos.get(id);
@@ -154,7 +153,6 @@
         Todos.fetch({reset: true});
       },
       addOne: function(todo) {
-        console.log(todo);
         var view = new TodoView({ model: todo });
         this.$todos.append( view.render().el );
       },
@@ -165,7 +163,7 @@
           title: this.$input.val().trim(), 
           completed: false,
           order: Todos.nextOrder()
-        });
+        }, {wait:true});
         this.$input.val('');
       },
       addAll: function() {
