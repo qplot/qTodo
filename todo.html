@@ -165,7 +165,7 @@
           title: this.$input.val().trim(), 
           completed: false,
           order: Todos.nextOrder()
-        }, {wait:true});
+        });
         this.$input.val('');
       },
       addAll: function() {
