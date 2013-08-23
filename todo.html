@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script src="http://codeorigin.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
+<script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
+<script src="backbone-min.js"></script>
+<script src="localStorage-min.js"></script>
+
+<meta charset=utf-8 />
+<title>Backbone.js project</title>
+
+<style>
+  #todo-list li {
+    list-style-type: none;
+  }
+  #todo-list li.editing .view {
+    display: none;
+  }
+  #todo-list li .edit {
+    display: none;
+  }
+  #todo-list li.editing .edit {
+    display: block;
+  }
+
+</style>
+</head>
+<body>
+  <!-- <div id="todo"></div> -->
+
+  <section id="todoapp">
+    <header id="header">
+      <h1>todos</h1>
+      <input id="new-todo" placeholder="What needs to be done?" autofocus>
+    </header>
+    <section id="main">
+      <input id="toggle-all" type="checkbox">
+      <label for="toggle-all">Mark all as completed</label>
+      <ul id="todo-list"></ul>  
+    </section>
+    <footer id="footer"></footer>
+  </section>
+  <div id="info">
+    <p>Double-click to edit a todo</p>
+  </div>
+  
+  <script type="text/template" id="item-template">
+    <div class="todo" <%= id ? 'data-id="'+id+'"' : '' %> <%= order%>>
+      <div class="view">
+        <input class="toggle" type="checkbox" <%= completed ? 'checked="checked"': '' %> />
+        <label><%= title %></label>
+      </div>
+      <input class="edit" value="<%- title %>">
+    </div>
+  </script>
+  <script>
+    // define model
+    var Todo = Backbone.Model.extend({
+      defaults: {
+        title: '',
+        completed: false,
+        order: 0
+      },
+      toggle: function() {
+        this.save({
+          completed: !this.get('completed')
+        });
+      }
+    });
+    var TodoList = Backbone.Collection.extend({
+      model: Todo,
+      localStorage: new Backbone.LocalStorage('todo-backbone'),
+      nextOrder: function() {
+        if (!this.length) return 1;
+        else return this.last().get('order') + 1;
+      },
+      comparator: function(todo) {
+        return todo.get('order');
+      }
+    });
+
+    // define view
+    var TodoView = Backbone.View.extend({
+      tagName: 'li',
+      template: _.template($('#item-template').html()),
+      events: {
+        'dblclick label': 'edit',
+        'blur .edit': 'close',
+        'keypress .edit': 'updateOnEnter',
+        'click .toggle': 'toggleCompleted'
+      },
+      initialize: function() {
+        this.listenTo(this.model, 'change', this.render);
+      },
+      render: function() {
+        this.$el.html(this.template(this.model.toJSON()));
+        this.$edit = this.$('.edit');
+        return this;
+      },
+      edit: function() {
+        this.$el.addClass('editing');
+        this.$edit.focus();
+      },
+      close: function() {
+        this.model.set({title: this.$edit.val().trim()});
+        // console.log('124');
+        this.$el.removeClass('editing');
+      },
+      updateOnEnter: function() {
+        if (event.which === 13) this.close();
+      },
+      toggleCompleted: function() {
+        this.model.toggle();
+      }
+    });
+    // var TodosView = Backbone.View.extend({
+    //   tagName: 'ul',
+    //   render: function() {
+    //     this.$el.html('');
+    //     var that = this;
+    //     this.model.forEach(function(model) {
+    //       var itemView = new TodoView({ model: model });
+    //       that.$el.append( itemView.render().el );
+    //     });
+    //   }
+    // });
+    var AppView = Backbone.View.extend({
+      el: $('#todoapp'),
+      // model: Todos,
+      events: {
+        'keypress #new-todo': 'createOnEnter',
+      },
+      initialize: function() {
+        this.allCheckbox = this.$('#toggle-all')[0];
+        this.$input = this.$('#new-todo');
+        this.$todos = this.$('#todo-list');
+        this.$main = this.$('#main');
+
+        this.$todos.sortable({
+          update: function(event, ui) {
+            console.log('sorted');
+            $('div.todo',this).each(function(i) {
+              var id = $(this).attr('data-id');
+              var todo = Todos.get(id);
+              todo.save({order: i+1});
+            });
+          }          
+        });
+
+        this.listenTo(Todos, 'add', this.addOne);
+        this.listenTo(Todos, 'reset', this.addAll);
+
+        Todos.fetch({reset: true});
+      },
+      addOne: function(todo) {
+        console.log(todo);
+        var view = new TodoView({ model: todo });
+        this.$todos.append( view.render().el );
+      },
+      createOnEnter: function(event) {
+        if (event.which !== 13 || !this.$input.val().trim()) return;
+        // Todos.add(new Todo({title: this.$input.val().trim()}));
+        var todo = Todos.create({
+          title: this.$input.val().trim(), 
+          completed: false,
+          order: Todos.nextOrder()
+        }, {wait:true});
+        this.$input.val('');
+      },
+      addAll: function() {
+        // console.log('reset');
+        this.$todos.html('');
+        Todos.each(this.addOne, this);
+      }
+    });
+
+    var Todos = new TodoList();
+    new AppView();
+    // Todos.add(new Todo({title: 'go to Duke'}));
+    // Todos.add(new Todo({title: 'work on pharmtrac'}));
+
+    // create a todo and update the todo element
+    // var todo1 = new Todo({
+    //   title: '123'
+    // });
+    // console.log(todo1.get('title'));
+    // todo1.set('title','learn backbone');
+
+    // var todoView = new TodoView({
+    //   el: $('#todo'),
+    //   model: todo1
+    // });
+    // todoView.render();
+
+    // var a = new Todo({title: '123'});
+    // var b = new Todo({title: '234'});
+    // var todos = new TodoList([a,b]);
+    // var todosView = new TodosView({
+    //   el: $('#todos'),
+    //   model: todos
+    // });
+    // todosView.render();
+    // todos.add(new Todo({title: 'todo'}));
+    // todosView.render();
+
+  </script>
+</body>
+</html>
