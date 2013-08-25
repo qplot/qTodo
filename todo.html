@@ -23,6 +23,10 @@
   #todo-list li.editing .edit {
     display: block;
   }
+  #todo-list label.completed {
+    font-style: italic;
+    text-decoration: line-through;
+  }
 
 </style>
 </head>
@@ -33,6 +37,8 @@
     <header id="header">
       <h1>todos</h1>
       <input id="new-todo" placeholder="What needs to be done?" autofocus>
+      <button id="redraw-all">Redraw</button>
+      <!-- <button id="remove-completed">Remove completed</button> -->
     </header>
     <section id="main">
       <input id="toggle-all" type="checkbox">
@@ -49,7 +55,7 @@
     <div class="todo" <%= id ? 'data-id="'+id+'"' : '' %> <%= order%>>
       <div class="view">
         <input class="toggle" type="checkbox" <%= completed ? 'checked="checked"': '' %> />
-        <label><%= title %></label>
+        <label class="<%= completed ? 'completed' : '' %>"><%= title %></label>
       </div>
       <input class="edit" value="<%- title %>">
     </div>
@@ -76,11 +82,17 @@
         else return this.last().get('order') + 1;
       },
       comparator: function(todo) {
-        return todo.get('order');
+        return todo.get('completed') ? 100+todo.get('order') : todo.get('order');
+        // return todo.get('order');
+      },
+      completed: function() {
+        return this.filter(function(todo) {
+          return todo.get('completed');
+        })
       }
     });
 
-    // define view
+    // Individule Todo Item View
     var TodoView = Backbone.View.extend({
       tagName: 'li',
       template: _.template($('#item-template').html()),
@@ -114,22 +126,16 @@
         this.model.toggle();
       }
     });
-    // var TodosView = Backbone.View.extend({
-    //   tagName: 'ul',
-    //   render: function() {
-    //     this.$el.html('');
-    //     var that = this;
-    //     this.model.forEach(function(model) {
-    //       var itemView = new TodoView({ model: model });
-    //       that.$el.append( itemView.render().el );
-    //     });
-    //   }
-    // });
+
+    // Application View
     var AppView = Backbone.View.extend({
       el: $('#todoapp'),
       // model: Todos,
       events: {
-        'keypress #new-todo': 'createOnEnter',
+        'keypress #new-todo': 'createOnEnter'
+      , 'click #toggle-all': 'toggleAllComplete'
+      , 'click #remove-completed': 'removeCompleted'
+      , 'click #redraw-all': 'addAll'
       },
       initialize: function() {
         this.allCheckbox = this.$('#toggle-all')[0];
@@ -158,7 +164,6 @@
       },
       createOnEnter: function(event) {
         if (event.which !== 13 || !this.$input.val().trim()) return;
-        // Todos.add(new Todo({title: this.$input.val().trim()}));
         var todo = Todos.create({
           title: this.$input.val().trim(), 
           completed: false,
@@ -167,9 +172,23 @@
         this.$input.val('');
       },
       addAll: function() {
-        // console.log('reset');
         this.$todos.html('');
         Todos.each(this.addOne, this);
+      },
+      toggleAllComplete: function() {
+        var completed = this.allCheckbox.checked;
+        Todos.each(function(todo) {
+          todo.save({
+            'completed': completed
+          });
+        })
+      },
+      // remove all completed items form the todo list
+      removeCompleted: function() {
+        // _.invoke(Todos.completed(), 'trigger', ['visible']);
+        _.invoke(Todos.completed(), 'destroy');
+
+        return false;
       }
     });
 
