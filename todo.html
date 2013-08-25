@@ -39,7 +39,7 @@
       <h1>todos</h1>
       <input id="new-todo" placeholder="What needs to be done?" autofocus>
       <button id="redraw-all">Redraw</button>
-      <!-- <button id="remove-completed">Remove completed</button> -->
+      <button id="remove-completed">Remove</button>
     </header>
     <section id="main">
       <input id="toggle-all" type="checkbox">
@@ -190,8 +190,7 @@
       removeCompleted: function() {
         // _.invoke(Todos.completed(), 'trigger', ['visible']);
         _.invoke(Todos.completed(), 'destroy');
-
-        return false;
+        this.addAll();
       }
     });
 
@@ -215,6 +214,8 @@
         // });
 
         this.listenTo(Todos, 'add', this.updateAll);
+        this.listenTo(Todos, 'change', this.updateAll);
+        this.listenTo(Todos, 'destroy', this.updateAll);
 
         this.model = Todos.toArray();
 
@@ -235,39 +236,54 @@
           .attr("height", height);
 
         this.updateAll();
-        this.force.start();
-        node = this.node;
-        this.force.on("tick", function() {
-          node.attr("transform", function(d) { 
-            return "translate(" + d.x + "," + d.y + ")";
-          });
-        });  
+        // this.force.start();
       },
       updateAll: function() {
         // add node display
         this.model = Todos.toArray();
-        this.force.nodes(this.model);
-        this.node = this.svg.selectAll(".node")
+
+        // add nodes 
+        var node = this.svg.selectAll(".node")
           .data(this.model)
           .enter()
           .append("g")
           .attr("class", "node")
           .call(this.force.drag);
-        
+        node.append("circle");
+        node.append("text");
+
+        // remove nodes
+        this.svg.selectAll(".node")
+          .data(this.model)
+          .exit()
+          .remove();
+
         var color = this.color;
-        this.node.append("circle")
+        // this.node.append("circle")
+        this.svg.selectAll(".node circle")
+          .data(this.model)
           .attr("class", "circle")
           .attr("r", function(d) { return 10; })
-          // .attr("transform", function(d) { return "translate(300,200)"; })
           .style("fill", function(d) { return color(1); });
           
-        this.node.append("text")
+
+        // this.node.append("text")
+        this.svg.selectAll(".node text")
+          .data(this.model)
           .text(function(d) { return d.get('title'); })
           .attr("font-size", function(d) { return 18; })
           .attr("font-style", function(d) { return d.get('completed') ? 'italic' : 'normal'; })
           .attr("text-decoration", function(d) { return d.get('completed') ? 'line-through' : 'normal'; })
           // .attr("visibility", function(d) { return d.get('completed') ? 'hidden' : 'visible'; })
           .attr("transform", function(d) { return "translate(" + 13 + ",3)";});
+
+        var node = this.svg.selectAll(".node");
+        this.force.stop();
+        this.force.nodes(this.model);
+        this.force.on("tick", function() {
+          node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+            // .text(function(d) { return d.get('title'); });
+        }).start();
       }
     });
 
