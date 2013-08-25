@@ -6,6 +6,7 @@
 <script src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
 <script src="backbone-min.js"></script>
 <script src="localStorage-min.js"></script>
+<script src="d3-min.js"></script>
 
 <meta charset=utf-8 />
 <title>Backbone.js project</title>
@@ -50,6 +51,8 @@
   <div id="info">
     <p>Double-click to edit a todo</p>
   </div>
+  <div id="force-chart">
+  </div>
   
   <script type="text/template" id="item-template">
     <div class="todo" <%= id ? 'data-id="'+id+'"' : '' %> <%= order%>>
@@ -92,7 +95,7 @@
       }
     });
 
-    // Individule Todo Item View
+    // Todo Item View
     var TodoView = Backbone.View.extend({
       tagName: 'li',
       template: _.template($('#item-template').html()),
@@ -192,8 +195,85 @@
       }
     });
 
+    // Force View
+    var ForceView = Backbone.View.extend({
+      el: $('#force-chart'),
+      model: [],
+      svg: [],
+      force: [],
+      node: [],
+      color: [],
+      initialize: function() {
+        // d3.select("#force-chart")
+        // .append("ul")
+        // .selectAll("li")
+        // .data(Todos.toArray())
+        // .enter()
+        // .append("li")
+        // .text(function(d) {
+        //   return d.get('title');
+        // });
+
+        this.listenTo(Todos, 'add', this.updateAll);
+
+        this.model = Todos.toArray();
+
+        var width = 600, height = 400;
+        this.color = d3.scale.category20();
+
+        // define force field
+        this.force = d3.layout.force()
+          .charge(-350)
+          .linkDistance(100)
+          .size([width, height]);
+          // .nodes(this.model);
+
+        // add svg graph
+        this.svg = d3.select("#force-chart")
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height);
+
+        this.updateAll();
+        this.force.start();
+        node = this.node;
+        this.force.on("tick", function() {
+          node.attr("transform", function(d) { 
+            return "translate(" + d.x + "," + d.y + ")";
+          });
+        });  
+      },
+      updateAll: function() {
+        // add node display
+        this.model = Todos.toArray();
+        this.force.nodes(this.model);
+        this.node = this.svg.selectAll(".node")
+          .data(this.model)
+          .enter()
+          .append("g")
+          .attr("class", "node")
+          .call(this.force.drag);
+        
+        var color = this.color;
+        this.node.append("circle")
+          .attr("class", "circle")
+          .attr("r", function(d) { return 10; })
+          // .attr("transform", function(d) { return "translate(300,200)"; })
+          .style("fill", function(d) { return color(1); });
+          
+        this.node.append("text")
+          .text(function(d) { return d.get('title'); })
+          .attr("font-size", function(d) { return 18; })
+          .attr("font-style", function(d) { return d.get('completed') ? 'italic' : 'normal'; })
+          .attr("text-decoration", function(d) { return d.get('completed') ? 'line-through' : 'normal'; })
+          // .attr("visibility", function(d) { return d.get('completed') ? 'hidden' : 'visible'; })
+          .attr("transform", function(d) { return "translate(" + 13 + ",3)";});
+      }
+    });
+
     var Todos = new TodoList();
     new AppView();
+    new ForceView();
     // Todos.add(new Todo({title: 'go to Duke'}));
     // Todos.add(new Todo({title: 'work on pharmtrac'}));
 
