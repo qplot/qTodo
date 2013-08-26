@@ -28,7 +28,15 @@
     font-style: italic;
     text-decoration: line-through;
   }
-
+  #d3 .circle {
+    stroke: #fff;
+    stroke-width: 1.5px;
+  }
+  #d3 .link {
+    stroke: #999;
+    stroke-opacity: .6;
+  }
+}
 </style>
 </head>
 <body>
@@ -36,8 +44,8 @@
 
   <section id="todoapp">
     <header id="header">
-      <h1>todos</h1>
-      <input id="new-todo" placeholder="What needs to be done?" autofocus>
+      <h1>Your List</h1>
+      <input id="new-todo" placeholder="New item " autofocus>
       <button id="redraw-all">Redraw</button>
       <button id="remove-completed">Remove</button>
     </header>
@@ -51,8 +59,13 @@
   <div id="info">
     <p>Double-click to edit a todo</p>
   </div>
-  <div id="force-chart">
-  </div>
+  <section id="d3">
+    <!-- <input id="make-link" type="checkbox"> -->
+    <label for="make-link" id="link-label">Please select a node to start connection</label>
+    <button id="make-link">Make link</button>
+    <div id="force-chart">
+    </div>
+  </section>
   
   <script type="text/template" id="item-template">
     <div class="todo" <%= id ? 'data-id="'+id+'"' : '' %> <%= order%>>
@@ -196,12 +209,18 @@
 
     // Force View
     var ForceView = Backbone.View.extend({
-      el: $('#force-chart'),
+      el: $('#d3'),
       model: [],
       svg: [],
       force: [],
       node: [],
+      link: [],
       color: [],
+      selected: [],
+      selected2: [],
+      events: {
+        'click #make-link': 'makeNewLink'
+      },
       initialize: function() {
         // d3.select("#force-chart")
         // .append("ul")
@@ -212,6 +231,9 @@
         // .text(function(d) {
         //   return d.get('title');
         // });
+
+        this.checkbox = this.$('#make-link')[0];
+        this.$label = this.$('#link-label');
 
         this.listenTo(Todos, 'add', this.updateAll);
         this.listenTo(Todos, 'change', this.updateAll);
@@ -239,7 +261,8 @@
         // this.force.start();
       },
       updateAll: function() {
-        // add node display
+        console.log('123');
+        // manage nodes
         this.model = Todos.toArray();
 
         // add nodes 
@@ -259,9 +282,21 @@
           .remove();
 
         var color = this.color;
+        var that = this;
         // this.node.append("circle")
         this.svg.selectAll(".node circle")
           .data(this.model)
+          .on("click", function(d) {
+            if (!that.selected) {
+              that.selected = d;
+            } else {
+              if (that.selected2) {
+                that.selected = that.selected2;
+              }
+              that.selected2 = d;
+            }
+            that.$label.html(that.selected.get('title') + " ->" + that.selected2.get('title'));
+          })
           .attr("class", "circle")
           .attr("r", function(d) { return 10; })
           .style("fill", function(d) { return color(1); });
@@ -277,13 +312,39 @@
           // .attr("visibility", function(d) { return d.get('completed') ? 'hidden' : 'visible'; })
           .attr("transform", function(d) { return "translate(" + 13 + ",3)";});
 
+
+        // manage links
+        this.svg.selectAll(".link")
+          .data(this.link)
+          .enter()
+          .append("line")
+          .attr("class", "link")
+          .style("stroke-width", function(d) { return 3; });
+
+
         var node = this.svg.selectAll(".node");
+        var link = this.svg.selectAll(".link");
         this.force.stop();
-        this.force.nodes(this.model);
+        this.force.nodes(this.model)
+          .links(this.link);
         this.force.on("tick", function() {
-          node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-            // .text(function(d) { return d.get('title'); });
+          // change node location
+          node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; 
+          });
+          link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
         }).start();
+      },
+      makeNewLink: function() {
+        if (this.selected && this.selected2) {
+          this.link.push({
+            source: this.model.indexOf(this.selected),
+            target: this.model.indexOf(this.selected2)
+          });
+          this.updateAll();
+        }
       }
     });
 
