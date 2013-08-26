@@ -36,6 +36,9 @@
     stroke: #999;
     stroke-opacity: .6;
   }
+  #d3 .link .hide {
+    display: none;
+  }
 }
 </style>
 </head>
@@ -64,6 +67,12 @@
     <label for="make-link" id="link-label">Please select a node to start connection</label>
     <button id="make-link">Make link</button>
     <button id="delete-link">Delete link</button>
+    <br />
+    <input id="hide-links" type="checkbox">
+    <label for="hide-links">Hide links</label>
+    <input id="hide-circles" type="checkbox">
+    <label for="hide-circles">Hide circles</label>
+
     <div id="force-chart">
     </div>
   </section>
@@ -221,7 +230,9 @@
       selected2: [],
       events: {
         'click #make-link': 'makeNewLink',
-        'click #delete-link': 'deleteLink'
+        'click #delete-link': 'deleteLink',
+        'click #hide-links': 'hideLinks',
+        'click #hide-circles': 'hideCircles'
       },
       initialize: function() {
         // d3.select("#force-chart")
@@ -235,6 +246,8 @@
         // });
 
         this.checkbox = this.$('#make-link')[0];
+        this.hideCheckbox = this.$('#hide-links')[0];
+        this.hideCheckbox2 = this.$('#hide-circles')[0];
         this.$label = this.$('#link-label');
 
         this.listenTo(Todos, 'add', this.updateAll);
@@ -365,7 +378,21 @@
             break;
           }
         }
-      }
+      },
+      hideLinks: function() {
+        if (this.hideCheckbox.checked) {
+          this.$el.find('.link').css({display: 'none'});
+        }
+        else
+          this.$el.find('.link').css({display: 'block'});
+      },
+      hideCircles: function() {
+        if (this.hideCheckbox2.checked) {
+          this.$el.find('.circle').css({display: 'none'});
+        }
+        else
+          this.$el.find('.circle').css({display: 'block'});
+      }      
     });
 
     var Todos = new TodoList();
